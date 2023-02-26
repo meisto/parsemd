@@ -20,12 +20,3 @@ type node interface {
    PrintHierarchy()
    printHierarchy(int) 
 }
-
-type activateable interface {
-   GetId() string
-   GetGroup() string
-   Activate()
-   IsFocused() bool
-   Focus() activateable
-   Unfocus() activateable
-}

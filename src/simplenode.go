@@ -56,8 +56,12 @@ func (self simplenode) applyFirst(
       return apply(self), true
    }
 
-   for _, x := range(self.children) {
-      return x.applyFirst(match, apply)
+   for i := 0; i < len(self.children); i++ {
+      child, match := self.children[i].applyFirst(match, apply)
+      if match {
+         self.children[i] = child
+         return self, true
+      }
    }
 
    return self, false

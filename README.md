@@ -14,7 +14,7 @@ A simple library to write small interfaces using a markdown-like language
 - Blockquote
 
 **Halfway there:**
-- Toggleable node (\<(button|label|id\>, button = [a-zA-Z0-9]+", label = [a-zA-Z0-9]+, id = [a-zA-Z0-9]+
+- Toggleable node (\<(button|label|id|group\>, button = [a-zA-Z0-9]+", label = [a-zA-Z0-9]+, id = [a-zA-Z0-9]+, group = [a-z]([a-z\.]*[a-z])?
 
 **To be added/Not tested:**
 - Singleselect node (\<label|id|length\>)

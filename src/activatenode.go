@@ -63,8 +63,12 @@ func (self activatenode) applyFirst(
       return apply(self), true
    }
 
-   for _, x := range(self.children) {
-      return x.applyFirst(match, apply)
+   for i := 0; i < len(self.children); i++ {
+      child, match := self.children[i].applyFirst(match, apply)
+      if match {
+         self.children[i] = child
+         return self, true
+      }
    }
 
    return self, false
@@ -75,11 +79,11 @@ func (self activatenode) Activate() {
 }
 
 func (self activatenode) IsFocused() bool { return self.focused}
-func (self activatenode) Focus() activateable {
+func (self activatenode) Focus() activatable {
    self.focused = true
    return self
 }
-func (self activatenode) Unfocus() activateable {
+func (self activatenode) Unfocus() activatable {
    self.focused = false
    return self
 }

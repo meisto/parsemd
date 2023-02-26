@@ -6,6 +6,7 @@
 package src
 
 import (
+   "fmt"
    "log"
    "regexp"
    "strings"
@@ -522,6 +523,19 @@ func parseText(text string) []node {
 func GetMDDocument(base string) MDDocument {
 
    parsed := parse(base)
+
+
+   var hasActivatableNode bool
+   parsed, hasActivatableNode = parsed.applyFirst(
+      func(n node) bool {
+         _, ok := n.(activatable)
+         return ok
+      },
+      func (n node) node { return n },
+   )
+
+   fmt.Println("Has activatable node?", hasActivatableNode)
+
 
    /*
    index := -1
