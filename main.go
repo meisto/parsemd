@@ -71,7 +71,6 @@ func (d *MDDocument) SelectPrev() {
          return 
       }
    }
-
 }
 
 func (d *MDDocument) ActivateElement() {
@@ -147,7 +146,10 @@ func (d MDDocument) Render(width int) string {
       a := d.renderNodes[i]
 
       switch x := a.(type) {
-         case LineBreakparseNode:
+         case paragraphbreakParseNode:
+            flush()
+            res += "\n"
+         case linebreakParseNode:
             isBlockquote = false
             flush()
 
@@ -254,7 +256,7 @@ func (d MDDocument) Render(width int) string {
                used += 2
             }
 
-         case bareTextparseNode:
+         case textParseNode:
             s := x.GetContent() 
 
             if utf8.RuneCountInString(s) > width - used {
@@ -275,7 +277,13 @@ func (d MDDocument) Render(width int) string {
             used += utf8.RuneCountInString(s)
       }
    }
-   res += line
+   res += line 
+
+   // Cut last newline if it exists
+   if strings.HasSuffix(res, "\n") {
+      res = res[:len(res) - 1]
+   }
+
    return res
 }
 
@@ -298,12 +306,15 @@ style    string
 func (n atomarParseNode) GetContent() string {return n.content}
 
 
-type bareTextparseNode struct { content  string }
-func (n bareTextparseNode) GetContent() string {return n.content}
+type textParseNode struct { content  string }
+func (n textParseNode) GetContent() string {return n.content}
 
 
-type LineBreakparseNode struct {}
-func (n LineBreakparseNode) GetContent() string {return ""}
+type linebreakParseNode struct {}
+func (n linebreakParseNode) GetContent() string {return ""}
+
+type paragraphbreakParseNode struct {}
+func (n paragraphbreakParseNode) GetContent() string {return ""}
 
 type blockquoteparseNode struct {}
 func (n blockquoteparseNode) GetContent() string {return ""}
@@ -397,69 +408,75 @@ func parse(line string) []parseNode {
    nodes := []parseNode{}
    lines := strings.Split(line, "\n")
 
-   // Regular expressions used for matching
-   headerRegex := regexp.MustCompile(`^\s*#.*$`)
-   linebreakRegex := regexp.MustCompile(`^\s*$`)
-   unnumberedlistRegex := regexp.MustCompile(`^\s*(-|\*).*$`)
-   numberedlistRegex := regexp.MustCompile(`^\s*[0-9]+\..*$`)
-   blockquoteRegex := regexp.MustCompile(`^\s*>.*$`)
-
-   line = ""
+   // Parse text line
    for _, element := range(lines) {
-
-      switch {
-         case headerRegex.MatchString(element):
-               nodes = append(nodes, fullLineparseNode{element, ""})
-
-         case linebreakRegex.MatchString(element):
-            _, ok1 := nodes[len(nodes) - 1].(fullLineparseNode) 
-            _, ok2 := nodes[len(nodes) - 1].(LineBreakparseNode) 
-            _, ok3 := nodes[len(nodes) - 1].(blockquoteparseNode) 
-            if !(ok1 || ok2 || ok3) {
-               nodes = append(nodes, LineBreakparseNode{})
-            }
-            nodes = append(nodes, LineBreakparseNode{})
-
-         case unnumberedlistRegex.MatchString(element):
-            nodes = append(nodes, fullLineparseNode{element, ""})
-
-         case numberedlistRegex.MatchString(element):
-            nodes = append(nodes, fullLineparseNode{element, ""})
-
-         case blockquoteRegex.MatchString(element):
-            nodes = append(nodes, blockquoteparseNode{})
-            element = regexp.MustCompile(`\s*>\s*`).ReplaceAllString(element, "")
-            nodes = append(nodes, bareTextparseNode{element})
-            nodes = append(nodes, LineBreakparseNode{})
-
-         default:
-            nodes = append(nodes, bareTextparseNode{element})
-      }
+      nodes = append(nodes, parseLine(element)...)
    }
 
+   // Merge text nodes in sequence
    nodes2 := []parseNode{}
    wasBareText := false
    for i := 0; i < len(nodes); i++ {
-      textNode, isBareText := nodes[i].(bareTextparseNode)
+      textNode, isBareText := nodes[i].(textParseNode)
 
       if i > 0 && wasBareText && isBareText {
          newText := nodes2[len(nodes2) - 1].GetContent() + " " + textNode.GetContent()
          nodes2 = nodes2[:len(nodes2) - 2]
-         nodes2 = append(nodes2, bareTextparseNode{newText})
-
-
-
+         nodes2 = append(nodes2, textParseNode{newText})
       } else {
          nodes2 = append(nodes2, nodes[i])
       }
 
       // Update prev
       wasBareText = isBareText
+   }
+
+   for i := 0; i < len(nodes2); i++ {
+      fmt.Printf("%T ", nodes2[i])
+   
+      _, ok := nodes2[i].(linebreakParseNode)
+      _, ok2 := nodes2[i].(paragraphbreakParseNode)
+      _, ok3 := nodes2[i].(fullLineparseNode)
+
+      if ok || ok2 || ok3 {fmt.Print("\n")}
 
    }
 
-
    return nodes2
+}
+
+func parseLine(element string) []parseNode {
+   // Regular expressions used for matching
+   headerRegex := regexp.MustCompile(`^\s*#+.*$`)
+   paragraphbreakRegex := regexp.MustCompile(`^\s*$`)
+   unnumberedlistRegex := regexp.MustCompile(`^\s*(-|\*).*$`)
+   numberedlistRegex := regexp.MustCompile(`^\s*[0-9]+\..*$`)
+   blockquoteRegex := regexp.MustCompile(`^\s*>.*$`)
+
+
+   switch {
+      case paragraphbreakRegex.MatchString(element):
+         return []parseNode{paragraphbreakParseNode{}}
+
+      case headerRegex.MatchString(element):
+         return []parseNode{fullLineparseNode{element, ""}}
+
+      case unnumberedlistRegex.MatchString(element):
+         return []parseNode{fullLineparseNode{element, ""}}
+
+      case numberedlistRegex.MatchString(element):
+         return []parseNode{fullLineparseNode{element, ""}}
+
+      case blockquoteRegex.MatchString(element):
+         return []parseNode{
+            textParseNode{regexp.MustCompile(`\s*>\s*`).
+               ReplaceAllString(element, "")},
+            linebreakParseNode{},
+         }
+
+      default:
+         return []parseNode{textParseNode{element}}
+   }
 }
 
 
@@ -492,12 +509,12 @@ func main() {
       return
    }
 
-   d := GetMDDocument(string(content))
+   GetMDDocument(string(content))
 
 //   for i := 0; i < len(d.renderNodes); i ++ {
 //      fmt.Printf("%T\n", d.renderNodes[i])
 //   }
 
-   fmt.Println(d.Render(50))
+   // fmt.Println(d.Render(50))
 
 }
