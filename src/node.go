@@ -8,15 +8,9 @@ package src
 type node interface {
    // Getter & Setter
    Length() int
-   GetChildren() []node
-   GetNodetype() string
    GetContent() string
 
    // Traversal & Transformation
    applyFirst(func(node) bool, func(node) node) (node, bool)
-
-   // Info & tostring methods
-   Info() string
-   PrintHierarchy()
-   printHierarchy(int) 
+   applyAll(func(node) node) node
 }

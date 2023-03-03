@@ -5,6 +5,7 @@
 // ======================================================================
 package src
 
+/*
 type activatable interface {
    GetId() string
    GetGroup() string
@@ -12,5 +13,7 @@ type activatable interface {
    IsFocused() bool
    Focus() activatable
    Unfocus() activatable
+   Evaluate() string
 }
+*/
 
